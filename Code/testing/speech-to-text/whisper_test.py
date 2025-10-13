@@ -3,7 +3,7 @@ import whisper
 
 model = whisper.load_model("base")
 
-AUDIO_DIR = "Audio_Jungle"
+AUDIO_DIR = "audio_jungle"
 
 OUTPUT_DIR = "transcript"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
