@@ -47,7 +47,7 @@ for filename in os.listdir(AUDIO_DIR):
                 file=audio_file,
             )
 
-        text = result["text"].strip()
+        text = result.text.strip()
         outpath = os.path.join(OUTPUT_DIR, f"{os.path.splitext(filename)[0]}.txt")
 
         with open(outpath, "w", encoding="utf-8") as f:
