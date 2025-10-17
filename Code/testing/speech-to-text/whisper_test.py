@@ -1,4 +1,4 @@
-import os
+import os, subprocess
 from openai import OpenAI
 from dotenv import load_dotenv
 from pathlib import Path
@@ -31,11 +31,21 @@ for filename in os.listdir(AUDIO_DIR):
         filepath = os.path.join(AUDIO_DIR, filename)
         print(f"Transcribing {filename}...")
 
-    with open(filepath, "rb") as audio_file:
-        result = client.audio.transcriptions.create(
-            model=MODEL,
-            file=audio_file,
-        )
+        wav_path = os.path.join(AUDIO_DIR, f"{os.path.splitext(filename)[0]}.wav")
+
+        #Run ffmpeg command
+        subprocess.run([
+            "ffmpeg",
+            "-y",
+            "-i", filepath,
+            wav_path
+        ], check=True)
+    
+        with open(wav_path, "rb") as audio_file:
+            result = client.audio.transcriptions.create(
+                model=MODEL,
+                file=audio_file,
+            )
 
         text = result["text"].strip()
         outpath = os.path.join(OUTPUT_DIR, f"{os.path.splitext(filename)[0]}.txt")
