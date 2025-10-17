@@ -66,5 +66,5 @@ logs/
 
 #Ignores Audio_Files and Transcripts
 
-audio_files\
-transcrip\
+testing/speech-to-text/audio_files/
+testing/speech-to-text/transcript/
