@@ -3,4 +3,3 @@ Exam Project for a group of students within AI studies of University Inland Norw
 
 ROD = Rettskriving og Diktering
 
-Help me
