@@ -2,6 +2,7 @@ import os, subprocess
 from openai import OpenAI
 from dotenv import load_dotenv
 from pathlib import Path
+import time
 """
 import whisper
 
@@ -25,6 +26,8 @@ OUTPUT_DIR = FILE_PATH / "transcript"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 EXTS = (".m4a", ".mp3")
+
+time_start = time.time()
 
 for filename in os.listdir(AUDIO_DIR):
     if filename.lower().endswith(EXTS):
@@ -54,3 +57,7 @@ for filename in os.listdir(AUDIO_DIR):
             f.write(text)
         
         print(f"Done  with {filename} and its now {outpath}")
+
+time_end = time.time()
+time_check = time_end - time_start
+print(f"It took {time_check} seconds.")

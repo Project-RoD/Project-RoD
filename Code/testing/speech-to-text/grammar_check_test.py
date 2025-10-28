@@ -1,10 +1,18 @@
-import os
+import os, json
 from openai import OpenAI
 from dotenv import load_dotenv
-import json
+from pathlib import Path
 
+TRANS_PATH = Path(__file__).parent.resolve() / "transcript"
 load_dotenv(dotenv_path="/home/bretski/Documents/Project-RoD/Code/rod/tests/.env")
 print("Key loaded?", os.getenv("OPENAI_API_KEY"))
+
+transcripts = []
+
+for filename in TRANS_PATH.iterdir():
+    if filename.suffix == ".txt":
+        with open(filename, "r", encoding="utf-8") as f:
+            transcripts.append(f.read().strip())
 
 API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=API_KEY)
@@ -26,10 +34,11 @@ def check_grammar(input_text: str) -> dict:
     Tekst: {input_text}
 
     Gjør følgende:
-    1) Finn konkrete feil (Bøying, ordstilling, preposisjon, bestemthet, kongurens, regnsetting).
-    2) Forklar kor hvorfor. (på {language})
-    3) Foreslå ett forbedret forslag til hver feil.
-    4) Gi en samlet kommentar og en hel-korrigert versjon.
+    1) Finn konkrete feil (Bøying, ordstilling, preposisjon, bestemthet, kongurens, regnsetting). Lister dem under "feil".
+    2) Husk at du skal lære dem {language}, pass på at de ikke bruker ord fra nynorsk eller andre språk.
+    3) Forklar kor hvorfor. (på {language})
+    4) Foreslå ett forbedret forslag til hver feil.
+    5) Gi en samlet kommentar og en hel-korrigert versjon.
     """
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -42,5 +51,5 @@ def check_grammar(input_text: str) -> dict:
     return json.loads(txt[start:end])
 
 test_message = "Eg liker å spiser epler og du gå til butikken i går."
-feedback = check_grammar(test_message)
+feedback = check_grammar(transcripts)
 print(json.dumps(feedback, ensure_ascii=False, indent=2))
