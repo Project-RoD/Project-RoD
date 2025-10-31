@@ -1,11 +1,13 @@
 import os
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
+import time
 
-load_dotenv()
+load_dotenv(dotenv_path="/home/bretski/Documents/Project-RoD/Code/rod/tests/.env")
 client = ElevenLabs(api_key=os.getenv("ELEVEN_LABS_API_KEY"))
+print("Loaded key:", os.getenv("ELEVEN_LABS_API_KEY"))
 
-text = "Dette er en test melding."
+text = "Hei der! Hvordan går det i dag? Jeg håper du har en fin dag."
 
 def text_to_speech_device(chat_text, filename = "output.mp3"):
     from elevenlabs import save
@@ -20,4 +22,10 @@ def text_to_speech_device(chat_text, filename = "output.mp3"):
     save(audio, filename)
     return filename
 
+
+time_start = time.time()
 text_to_speech_device(text)
+time_end = time.time()
+time_test = time_end - time_start
+
+print(time_test)
