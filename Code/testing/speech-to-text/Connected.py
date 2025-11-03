@@ -9,5 +9,5 @@ BASE_DIR = Path(__file__).resolve().parent[1]
 sys.path.append(str(BASE_DIR / "whisper_test"))
 sys.path.append(str(BASE_DIR / "grammar_check_test"))
 
-import whisper_test
-import gramma_check_test
+from whisper_test import 
+from grammar_check_test import grammar_check
