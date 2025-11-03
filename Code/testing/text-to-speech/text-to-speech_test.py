@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
 import time
+from pathlib import Path
 
 load_dotenv(dotenv_path="/home/bretski/Documents/Project-RoD/Code/rod/tests/.env")
 client = ElevenLabs(api_key=os.getenv("ELEVEN_LABS_API_KEY"))
