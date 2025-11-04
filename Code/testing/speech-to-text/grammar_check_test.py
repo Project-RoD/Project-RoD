@@ -1,55 +1,94 @@
 import os, json
+from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 from pathlib import Path
 
-TRANS_PATH = Path(__file__).parent.resolve() / "transcript"
 load_dotenv(dotenv_path="/home/bretski/Documents/Project-RoD/Code/rod/tests/.env")
+
+MEMORY_FILE = Path(__file__).parent / "chat_memory.jsonl"
+
 print("Key loaded?", os.getenv("OPENAI_API_KEY"))
 
-transcripts = []
-
-for filename in TRANS_PATH.iterdir():
-    if filename.suffix == ".txt":
-        with open(filename, "r", encoding="utf-8") as f:
-            transcripts.append(f.read().strip())
-
 API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=API_KEY)
 
 system_message = """
-Du er en grammatikk- og rettskrivingskontrollør. Din oppgave er å identifiser og rette grammatikk- og rettskrivingsfeil i teksten som gis til deg.
+Du er en språkveileder som analyserer norsk tale som har blitt automatisk transkribert.
+Teksten kan inneholde skrivefeil eller merkelige ord fordi talegjenkjenningen (Whisper)
+ikke alltid hørte riktig.
+
+Ditt mål:
+- Hjelp brukeren å lære grammatikk og ordstilling, men ikke klandre dem for skrivefeil som
+  åpenbart skyldes feil i transkripsjon.
+- Retting av slike feil skal merkes som type "stavefeil (transkripsjon)".
+- Forklar kort hva som er feil, men legg til en vennlig merknad som
+  "mulig feil fra talegjenkjenning" der det passer.
+- Klassifiser feil i én av disse kategoriene:
+  "grammar", "syntax", "word_choice", "spelling (transcription)"
+- Gi til slutt en korrigert versjon av teksten som flyter naturlig på norsk.
+- Avslutt med en kort, vennlig kommentar som forklarer hva brukeren gjorde bra.
+
 
 Svar i JSON-format med følgende struktur:
 {
-  "korreksjoner": [{"feil": "...", "forklaring": "...", "forslag": "..."}],
-  "kommentar": "...",
-  "korrigert_tekst": "...",
-  }
+    "original_text": "...",
+    "corrected_text": "...",
+    "errors": [
+    {
+        "type": "grammar" | "syntax" | "word_choice",
+        "feil": "..",
+        "forklaring": "...",
+        "forslag": "..."
+    }
+    ],
+    "comment": "..."
+}
 """
 language = "norsk bokmål"
 
-def check_grammar(input_text: str) -> dict:
-    prompt = f"""
-    Tekst: {input_text}
+def check_grammar(input_text: str, api_key: str | None = None, save_memory: bool = True) -> dict:
+    api_key = api_key
+    if not api_key:
+        raise ValueError("Missing API key.")
+    
+    client = OpenAI(api_key=api_key)
+    
+    user_prompt = f"""
+    Analyser følgene tekst skrevet på norsk bokmål:
 
-    Gjør følgende:
-    1) Finn konkrete feil (Bøying, ordstilling, preposisjon, bestemthet, kongurens, regnsetting). Lister dem under "feil".
-    2) Husk at du skal lære dem {language}, pass på at de ikke bruker ord fra nynorsk eller andre språk.
-    3) Forklar kor hvorfor. (på {language})
-    4) Foreslå ett forbedret forslag til hver feil.
-    5) Gi en samlet kommentar og en hel-korrigert versjon.
+    {input_text}
+
+    Identifiser og klassifiser feil i grammatikk, ordstilling, ordvalg, og returner i formatet beskrevet ovenfor.
     """
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[{"role": "system", "content": system_message},
-                  {"role": "user", "content": prompt}],
+                  {"role": "user", "content": user_prompt}],
                   temperature=0
     )
     txt = response.choices[0].message.content
     start = txt.find("{"); end = txt.rfind("}")+1
-    return json.loads(txt[start:end])
+    
+    try:
+        parsed = json.loads(txt[start:end])
+    except Exception:
+        parsed = {
+            "original_text": input_text,
+            "corrected_text": "",
+            "errors": [],
+            "comment": "Couldn't parse JSON from response.",
+            "raw_output": txt
 
-test_message = "Eg liker å spiser epler og du gå til butikken i går."
-feedback = check_grammar(transcripts)
-print(json.dumps(feedback, ensure_ascii=False, indent=2))
+        }
+    
+    parsed["metadata"] = {"timestamp": datetime.now().isoformat()}
+    if save_memory:
+        with open(MEMORY_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(parsed, ensure_ascii=False) + "\n")
+        
+    return parsed
+
+if __name__ == "__main__":
+    test_message = "Eg liker å spiser epler og du gå til butikken i går."
+    feedback = check_grammar(test_message, API_KEY)
+    print(json.dumps(feedback, ensure_ascii=False, indent=2))

@@ -10,3 +10,5 @@ API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=API_KEY)
 
 BASE_DIR = Path(__file__).resolve().parent[1]
+
+

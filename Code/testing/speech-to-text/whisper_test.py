@@ -31,17 +31,20 @@ def speech_to_text(inpath, outpath, api_key):
 
     for filename in os.listdir(AUDIO_DIR):
         if filename.lower().endswith(EXTS):
-            filepath = AUDIO_DIR/ filename
+            filepath = AUDIO_DIR / filename
             print(f"Transcribing {filename}...")
 
-            wav_path = AUDIO_DIR, f"{Path(filename).stem}.wav"
+            wav_path = AUDIO_DIR / f"{Path(filename).stem}.wav"
 
             #Run ffmpeg command
-            subprocess.run([
-                "ffmpeg", "-y", "-i", filepath,wav_path],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL)
+            if not filename.lower().endswith(".wav"):
+                subprocess.run([
+                    "ffmpeg", "-y", "-i", filepath,wav_path],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL)
+            else:
+                wav_path = filename
 
             #transcribe
             with open(wav_path, "rb") as audio_file:
