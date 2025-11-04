@@ -2,7 +2,7 @@ import os, sys
 from pathlib import Path
 from openai import OpenAI
 from dotenv import load_dotenv
-from whisper_test import 
+from whisper_test import speech_to_text
 from grammar_check_test import check_grammar
 
 load_dotenv(dotenv_path="/home/bretski/Documents/Project-RoD/Code/rod/tests/.env")
