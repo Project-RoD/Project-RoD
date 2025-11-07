@@ -1,12 +1,17 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+from memory_manager import append_memory, load_memory
 
 # Load environment variables from .env file
 load_dotenv()
 
 # CONFIGURATION
 API_KEY = os.getenv("OPENAI_API_KEY") # A .env file should be present with your key.
+
+print("Connecting to Rod...")
+client = OpenAI(api_key=API_KEY)
+print("Connection successful! You can now chat with Rod. Type 'exit' to quit.")
 
 # Instructions for Rod, the Norwegian language tutor.
 ROD_INSTRUCTIONS = """
@@ -31,10 +36,6 @@ conversation_history = [
 ]
 
 def main():
-    print("Connecting to Rod...")
-    client = OpenAI(api_key=API_KEY)
-    print("Connection successful! You can now chat with Rod. Type 'exit' to quit.")
-
     # Initial greeting from Rod.
     print("Rod: Hei! Jeg er Rod, din personlige norsklærer. Hva vil du snakke om i dag?")
 
@@ -66,6 +67,20 @@ def main():
             print(f"--- ERROR: Could not get a response. {e} ---")
             # If there was an error, remove the user's last message.
             conversation_history.pop()
+
+def generate_reply(user_text):
+    conversation = load_memory(limit=10)
+    conversation.append({"role":"user", "content": user_text})
+    
+    generate = client.responses.create(
+                model="gpt-4o",
+                instructions=ROD_INSTRUCTIONS,
+                input=conversation_history # Send the full conversation history.
+            )
+    
+    response = generate.output_text
+    append_memory("assistant", response)
+    return response
 
 if __name__ == "__main__":
     main()

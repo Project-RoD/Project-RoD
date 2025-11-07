@@ -51,6 +51,7 @@ def speech_to_text(inpath, outpath, api_key):
                 result = client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
+                    language="no"
                 )
 
             text = result.text.strip()

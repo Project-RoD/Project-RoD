@@ -1,8 +1,8 @@
-import os, json
-from datetime import datetime
+import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from pathlib import Path
+from memory_manager import append_memory
 
 load_dotenv(dotenv_path="/home/bretski/Documents/Project-RoD/Code/rod/tests/.env")
 
@@ -39,8 +39,9 @@ def check_grammar(input_text: str):
         instructions=grammar_instructions,
         input=[{"role": "user", "content": input_text}]
     )
-        
-    return response.output_text
+    feedback = response.output_text
+    append_memory("grammar_feedback", feedback)
+    return feedback
 
 if __name__ == "__main__":
     test_message = "Eg liker å spiser epler og du gå til butikken i går."
