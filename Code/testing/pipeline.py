@@ -22,7 +22,7 @@ def process(audio_file):
     grammar = check_grammar(text)
     append_memory("grammar_feedback", grammar)
 
-    reply = generate_reply(text)
+    reply = generate_reply(grammar["corrected_text"])
 
     audio_path = text_to_speech_device(reply)
     return {

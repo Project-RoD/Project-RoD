@@ -1,4 +1,4 @@
-import os
+import os, json
 from openai import OpenAI
 from dotenv import load_dotenv
 from pathlib import Path
@@ -41,7 +41,19 @@ def check_grammar(input_text: str):
     )
     feedback = response.output_text
     append_memory("grammar_feedback", feedback)
-    return feedback
+
+    try:
+        start = feedback.find("{")
+        end = feedback.rfind("}") + 1
+        parsed = json.loads(feedback[start:end])
+    except Exception:
+        parsed = {
+            "original_text": input_text,
+            "corrected_text": feedback,
+            "errors": [],
+            "comment": "Grammar check did not return structured JSON."
+        }
+    return parsed
 
 if __name__ == "__main__":
     test_message = "Eg liker å spiser epler og du gå til butikken i går."
