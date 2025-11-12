@@ -1,5 +1,5 @@
 import json
-import datetime
+from datetime import datetime
 from pathlib import Path
 
 MEMORY_FILE = Path(__file__).parent / "memory.jsonl"

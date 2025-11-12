@@ -1,4 +1,4 @@
-import os, sys
+import os, time
 from pathlib import Path
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -12,7 +12,7 @@ load_dotenv(dotenv_path="/home/bretski/Documents/Project-RoD/Code/rod/tests/.env
 API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=API_KEY)
 
-BASE_DIR = Path(__file__).resolve().parent[1]
+BASE_DIR = Path(__file__).parent
 MEMORY_FILE = Path(__file__).parent / "memory.jsonl"
 
 def process(audio_file):
@@ -33,14 +33,15 @@ def process(audio_file):
     }
 
 if __name__ == "__main__":
-    audio_file_location = BASE_DIR / "testing" / "audio_files"
+    audio_file_location = BASE_DIR / "speech_to_text" / "audio_files"
 
-    for audio_file in os.listdir(audio_file_location):
-        if audio_file.lower().endswith((".m4a", ".mp3", ".wav")):
-            audio_path = audio_file_location / audio_file
-            result = process(audio_path)
-            print(f"Processed {audio_file}:")
-            print(f"User Text: {result['user_text']}")
-            print(f"Grammar Feedback: {result['grammar_feedback']}")
-            print(f"Reply Text: {result['reply_text']}")
-            print(f"Reply Audio Path: {result['reply_audio']}")
+    for audio_file in audio_file_location.iterdir():
+        time_start = time.time()
+        result = process(audio_file)
+        print(f"Processed {audio_file}:")
+        print(f"User Text: {result['user_text']}")
+        print(f"Grammar Feedback: {result['grammar_feedback']}")
+        print(f"Reply Text: {result['reply_text']}")
+        print(f"Reply Audio Path: {result['reply_audio']}")
+        time_end = time.time()
+        print(f"Done, it took {time_end - time_start}")
