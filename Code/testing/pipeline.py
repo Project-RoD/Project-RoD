@@ -20,7 +20,7 @@ def process(audio_file):
     append_memory("user", text)
 
     grammar = check_grammar(text)
-    append_memory("grammar_feedback")
+    append_memory("grammar_feedback", grammar)
 
     reply = generate_reply(text)
 
@@ -31,3 +31,16 @@ def process(audio_file):
         "reply_text": reply,
         "reply_audio": audio_path
     }
+
+if __name__ == "__main__":
+    audio_file_location = BASE_DIR / "testing" / "audio_files"
+
+    for audio_file in os.listdir(audio_file_location):
+        if audio_file.lower().endswith((".m4a", ".mp3", ".wav")):
+            audio_path = audio_file_location / audio_file
+            result = process(audio_path)
+            print(f"Processed {audio_file}:")
+            print(f"User Text: {result['user_text']}")
+            print(f"Grammar Feedback: {result['grammar_feedback']}")
+            print(f"Reply Text: {result['reply_text']}")
+            print(f"Reply Audio Path: {result['reply_audio']}")

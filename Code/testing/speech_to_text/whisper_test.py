@@ -1,4 +1,4 @@
-import os, subprocess
+import os, subprocess, tempfile
 from openai import OpenAI
 from dotenv import load_dotenv
 from pathlib import Path
@@ -34,35 +34,37 @@ def speech_to_text(inpath, outpath, api_key):
             filepath = AUDIO_DIR / filename
             print(f"Transcribing {filename}...")
 
-            wav_path = AUDIO_DIR / f"{Path(filename).stem}.wav"
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp:
+                temp_path = Path(temp.name)
 
-            #Run ffmpeg command
-            if not filename.lower().endswith(".wav"):
-                subprocess.run([
-                    "ffmpeg", "-y", "-i", filepath,wav_path],
-                    check=True,
+            try:
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", str(filepath), "-ar", "16000", "-ac", "1", str(temp_path)],
+                    check= True,
                     stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL)
-            else:
-                wav_path = filename
-
-            #transcribe
-            with open(wav_path, "rb") as audio_file:
-                result = client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file,
-                    language="no"
+                    stderr=subprocess.DEVNULL
                 )
+                with open(temp_path, "rb") as audio_file:
+                    transcript = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file
+                    )
+                
+                text = transcript.text.strip()
+                out_file = OUTPUT_DIR / f"{Path(filename).stem}.txt"
+                out_file.write_text(text, encoding="utf-8")
 
-            text = result.text.strip()
-            out_file = OUTPUT_DIR / f"{Path(filename).stem}.txt"
-            out_file.write_text(text, encoding="utf-8")
-
-            results.append({
-                "filename": filename,
-                "transcript_path": str(out_file),
-                "text": text
-            })
+                results.append({
+                    "filename": filename,
+                    "transcript_path": str(out_file),
+                    "text": text
+                })
+            finally:
+                if temp_path.exists():
+                    try:
+                        temp_path.unlink()
+                    except Exception as e:
+                        print(f"Warning: Couldnt delete {temp_path}: {e}")
     return results
 
 speech_to_text("audio_files", "transcript", API_KEY)
