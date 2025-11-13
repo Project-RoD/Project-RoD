@@ -1,12 +1,14 @@
 import os
+from pathlib import Path
 import whisper
 
-model = whisper.load_model("base")
+model = whisper.load_model("medium")
+MODEL_DIR = Path(__file__).parent
 
-AUDIO_DIR = "audio_jungle"
+AUDIO_DIR = MODEL_DIR/"audio_files"
 
-OUTPUT_DIR = "transcript"
-#os.makedirs(OUTPUT_DIR, exist_ok=True)
+OUTPUT_DIR = MODEL_DIR/"transcript"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 EXTS = (".m4a", ".mp3")
 
