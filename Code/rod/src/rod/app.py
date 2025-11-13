@@ -368,7 +368,7 @@ class RoD(toga.App):
         user_bubble_box = toga.Box(
             children=[user_bubble_text],
             style=Pack(
-                align_self=END, # Aligns the whole box to the right
+                align_items=END, # Aligns the whole box to the right
                 margin=5, 
                 background_color="#007AFF"
             )
@@ -410,7 +410,7 @@ class RoD(toga.App):
         ai_bubble_box = toga.Box(
             children=[ai_bubble_text],
             style=Pack(
-                align_self=START, # Aligns the whole box to the left
+                align_items=START, # Aligns the whole box to the left
                 margin=5, 
                 background_color="#E5E5EA"
             )
