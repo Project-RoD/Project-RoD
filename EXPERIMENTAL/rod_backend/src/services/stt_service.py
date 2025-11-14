@@ -7,8 +7,6 @@ from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from typing import Optional
 
-import subprocess
-
 load_dotenv()
 API_KEY = os.getenv("OPENAI_API_KEY")
 client = AsyncOpenAI(api_key=API_KEY)
