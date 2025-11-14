@@ -1,38 +1,34 @@
 import toga
 from toga.style import Pack
 from toga.style.pack import COLUMN, ROW, CENTER, LEFT, RIGHT, BOLD, START, END
+from pathlib import Path
+import asyncio
 
-# Import your 'brain'
-# STEP 1: Import the "brain"
-from .services.api_service import get_rod_response
+# Import ALL the brains
+from .services.textgen_service import get_rod_response
+from .services.stt_service import speech_to_text
+from .services.memory_service import load_memory, append_memory
+# MISSING TTS
 
 class RoD(toga.App):
 
     def startup(self):
         """
         Construct and show the Toga application.
-        This is where we build the UI from your vision.
         """
-        # --- App State ---
-        # We define our app's "state" (data) here.
+        # App State
         self.streak_count = 0 
         self.recommended_media = ['recommendation']
         
-        # STEP 2: Add "memory" for the conversation
+        # Create placeholder "memory"
         self.conversation_history = []
         
-        # --- Main Window & Navigation ---
-        # We create the main window.
+        # Main Window & Navigation
         self.main_window = toga.MainWindow(title=self.formal_name)
-        
-        # We build the shared navigation bar ONCE and store it.
         self.nav_bar = self.build_nav_bar()
-
-        # STEP 5: Pre-build layouts for faster navigation
         self.homepage_layout = self.build_homepage_layout()
         self.chat_layout = self.build_chat_layout()
 
-        # --- FIX 1: Create a persistent layout ---
         # This Box will hold the content that changes
         self.main_content_area = toga.Box(style=Pack(flex=1, direction=COLUMN))
         
@@ -45,21 +41,32 @@ class RoD(toga.App):
             style=Pack(direction=COLUMN)
         )
 
-        # Build the homepage layout and show it first.
         self.main_content_area.add(self.homepage_layout)
         self.main_window.content = app_container
         
         # Show the window
         self.main_window.show()
 
+        asyncio.create_task(self.async_startup_tasks())
+
+
+    async def async_startup_tasks(self):
+        """
+        Run all the async tasks that couldn't be run in startup().
+        """
+        # Load the real memory from file
+        self.conversation_history = await load_memory()
+        # Now, populate the chat UI with the history we just loaded
+        await self.load_chat_history_into_ui()
+
+
     def build_homepage_layout(self):
         """
         Builds and returns the widget Box for the Homepage.
-        This is all the code you've already written for the main page.
         """
-        # --- 1. The Top Row (Header) ---
+        # The Top Row (Header)
         try:
-            streak_icon_image = toga.Image("resources/fire_icon.png")
+            streak_icon_image = toga.Image("resources/icons/fire_icon.png")
             streak_icon = toga.ImageView(
                 image=streak_icon_image,
                 style=Pack(width=32, height=32)
@@ -79,7 +86,7 @@ class RoD(toga.App):
         )
 
         try:
-            profile_icon = toga.Icon("resources/profile_icon.png")
+            profile_icon = toga.Icon("resources/icons/profile_icon.png")
         except FileNotFoundError:
             print("WARNING: 'profile_icon.png' not found. Using a placeholder.")
             profile_icon = toga.Icon.DEFAULT_ICON
@@ -87,7 +94,6 @@ class RoD(toga.App):
         profile_button = toga.Button(
             icon=profile_icon,
             on_press=self.go_to_profile,
-            # FIX 4: padding -> margin
             style=Pack(width=44, height=44, margin=0)
         )
         right_header_box = toga.Box(
@@ -99,7 +105,7 @@ class RoD(toga.App):
             style=Pack(direction=ROW, height=60)
         )
 
-        # --- 2. Main Chat Area ---
+        # Main Chat Area
         chat_button_main = toga.Button(
             "Chat with RoD",
             on_press=self.open_chat, 
@@ -111,15 +117,15 @@ class RoD(toga.App):
             )
         )
 
-        # --- 3. The Media Hub ---
+        # The Media Hub
         media_hub_title_button = toga.Button(
-            "Media Hub", # Added '>' to imply navigation
+            "Media Hub",
             on_press=self.go_to_media,
             style=Pack(
                 margin=(0, 200, 5, 20), 
                 font_weight=BOLD, 
                 font_size=14, 
-                background_color='transparent' # Make it look less like a button
+                background_color='transparent'
             )
         )
         media_preview_title = toga.Label(
@@ -134,29 +140,26 @@ class RoD(toga.App):
             style=Pack(direction=COLUMN)
         )
         
-        # --- Assemble The Homepage Window ---
+        # Assemble The Homepage Window
         main_box = toga.Box(
             children=[
                 header_box,
                 chat_button_main,
                 media_preview_box,
                 toga.Box(style=Pack(flex=1)), # This is the spacer
-                # FIX 1: Nav bar is no longer built here
             ],
-            style=Pack(direction=COLUMN, flex=1) # Add flex=1 to fill the content area
+            style=Pack(direction=COLUMN, flex=1) 
         )
         return main_box
 
     def build_chat_layout(self):
         """
         Builds and returns the widget Box for the Chat Page.
-        This is a new, simple layout based on your Figma.
         """
         
-        # --- 1. The New Header ---
-        # Your idea: Hamburger menu on the left, profile on the right.
+        # The New Header
         try:
-            menu_icon = toga.Icon("resources/menu_icon.png") # You'll need to find this icon
+            menu_icon = toga.Icon("resources/icons/menu_icon.png") 
         except FileNotFoundError:
             print("WARNING: 'menu_icon.png' not found. Using a placeholder.")
             menu_icon = toga.Icon.DEFAULT_ICON
@@ -164,7 +167,6 @@ class RoD(toga.App):
         menu_button = toga.Button(
             icon=menu_icon,
             on_press=self.open_menu,
-            # FIX 4: padding -> margin
             style=Pack(width=44, height=44, margin=0)
         )
         left_header_box = toga.Box(
@@ -172,9 +174,8 @@ class RoD(toga.App):
             style=Pack(direction=ROW, align_items=START, margin=10)
         )
         
-        # Re-using the profile button logic
         try:
-            profile_icon = toga.Icon("resources/profile_icon.png")
+            profile_icon = toga.Icon("resources/icons/profile_icon.png")
         except FileNotFoundError:
             print("WARNING: 'profile_icon.png' not found. Using a placeholder.")
             profile_icon = toga.Icon.DEFAULT_ICON
@@ -182,12 +183,11 @@ class RoD(toga.App):
         profile_button = toga.Button(
             icon=profile_icon,
             on_press=self.go_to_profile,
-            # FIX 4: padding -> margin
             style=Pack(width=44, height=44, margin=0)
         )
         right_header_box = toga.Box(
             children=[profile_button],
-            style=Pack(direction=ROW, align_items=END, margin=10)
+            style=Pack(direction=ROW, align_items=END, margin=10) 
         )
         
         header_box = toga.Box(
@@ -195,30 +195,24 @@ class RoD(toga.App):
             style=Pack(direction=ROW, height=60)
         )
 
-        # --- 2. The Chat Log Area ---
-        # This is the "meat" of the page.
-        # We use a ScrollContainer so the messages can scroll.
+        # The Chat Log Area
         self.chat_log_display = toga.Box(
-            # FIX 4: padding -> margin
             style=Pack(direction=COLUMN, flex=1, margin=10)
         )
-        # Store the ScrollContainer as self.chat_scroll to scroll it later
         self.chat_scroll = toga.ScrollContainer(
             content=self.chat_log_display,
             style=Pack(flex=1)
         )
         
-        # --- 3. The Input Area ---
-        # Your idea: A text box and a microphone button.
+        # The Input Area
         self.chat_input = toga.TextInput(
             placeholder="Message...",
-            # STEP 3: Connect the "Enter" key to the new send function
-            on_confirm=self.handle_text_send,
+            on_confirm=self.handle_text_send_sync,
             style=Pack(flex=1, height=44)
         )
         
         try:
-            mic_icon = toga.Icon("resources/mic_icon.png") # You'll need to find this icon
+            mic_icon = toga.Icon("resources/icons/mic_icon.png") 
         except FileNotFoundError:
             print("WARNING: 'mic_icon.png' not found. Using a placeholder.")
             mic_icon = toga.Icon.DEFAULT_ICON
@@ -231,19 +225,17 @@ class RoD(toga.App):
 
         input_box = toga.Box(
             children=[self.chat_input, mic_button],
-            # FIX 3: padding -> margin
             style=Pack(direction=ROW, align_items=CENTER, margin=(10, 10, 10, 10))
         )
 
-        # --- Assemble The Chat Page Window ---
+        # Assemble The Chat Page Window
         main_box = toga.Box(
             children=[
                 header_box,
                 self.chat_scroll, # The scrollable chat area
                 input_box,   # The text input
-                # FIX 1: Nav bar is no longer built here
             ],
-            style=Pack(direction=COLUMN, flex=1) # Add flex=1 to fill the content area
+            style=Pack(direction=COLUMN, flex=1) 
         )
         return main_box
 
@@ -253,7 +245,7 @@ class RoD(toga.App):
         """
         # Chat Button
         try:
-            chat_nav_icon = toga.Icon("resources/chat_icon.png")
+            chat_nav_icon = toga.Icon("resources/icons/chat_icon.png")
         except FileNotFoundError:
             print("WARNING: 'chat_icon.png' not found. Using a placeholder.")
             chat_nav_icon = toga.Icon.DEFAULT_ICON
@@ -266,7 +258,7 @@ class RoD(toga.App):
 
         # Home Button
         try:
-            home_icon = toga.Icon("resources/home_icon.png")
+            home_icon = toga.Icon("resources/icons/home_icon.png")
         except FileNotFoundError:
             print("WARNING: 'home_icon.png' not found. Using a placeholder.")
             home_icon = toga.Icon.DEFAULT_ICON
@@ -279,7 +271,7 @@ class RoD(toga.App):
 
         # Game Button
         try:
-            game_nav_icon = toga.Icon("resources/game_icon.png")
+            game_nav_icon = toga.Icon("resources/icons/game_icon.png")
         except FileNotFoundError:
             print("WARNING: 'game_icon.png' not found. Using a placeholder.")
             game_nav_icon = toga.Icon.DEFAULT_ICON
@@ -310,120 +302,159 @@ class RoD(toga.App):
         )
         return nav_bar
         
+    # UI Helper Functions
+    async def load_chat_history_into_ui(self):
+        """Clears the chat UI and rebuilds it from the history state."""
+        self.chat_log_display.clear()
+        for message in self.conversation_history:
+            if message['role'] == 'user':
+                bubble_style = Pack(align_items=END, margin=5, background_color="#007AFF")
+                text_style = Pack(margin=10, color="white")
+            else: # 'assistant'
+                bubble_style = Pack(align_items=START, margin=5, background_color="#E5E5EA")
+                text_style = Pack(margin=10)
+            
+            self.chat_log_display.add(
+                toga.Box(
+                    children=[toga.Label(message['content'], style=text_style)],
+                    style=bubble_style
+                )
+            )
+        await self.scroll_to_bottom()
+
+    async def scroll_to_bottom(self):
+        """Scrolls the chat log to the most recent message."""
+        await asyncio.sleep(0.01) # A small delay to ensure UI updates
+        self.chat_scroll.vertical_position = self.chat_scroll.max_vertical_position
 
     # --- Button Functions (Navigation) -----------------------------------
     
     def go_to_homepage(self, widget):
         print("Homepage button clicked!")
-        # FIX 1: New navigation logic
         for child in self.main_content_area.children:
             self.main_content_area.remove(child)
         self.main_content_area.add(self.homepage_layout)
 
     def go_to_profile(self, widget):
         print("Profile button clicked!")
-        # Later, this will navigate to a new "Profile" screen
-        # self.main_content_area.remove(self.main_content_area.children[0])
-        # self.main_content_area.add(self.build_profile_layout())
 
-    def open_chat(self, widget):
+    async def open_chat(self, widget):
         print("Open Chat button clicked!")
-        # FIX 1: New navigation logic
+        # Reload the history from file every time we open the chat
+        self.conversation_history = await load_memory()
+        await self.load_chat_history_into_ui()
+        
         for child in self.main_content_area.children:
             self.main_content_area.remove(child)
         self.main_content_area.add(self.chat_layout)
 
-
     def go_to_media(self, widget):
         print("Media Hub button clicked!")
-        # This will navigate to the full "Media Hub" screen
-        # ...
     
     def go_to_games(self, widget):
         print("Game Hub button clicked!")
-        # This will navigate to the "Game Hub" screen
-        # ...
         
     # --- Button Functions (Chat Page) ------------------------------------
     
     def open_menu(self, widget):
         print("Menu button clicked!")
     
-    # STEP 4: Create the new "send" function
-    async def handle_text_send(self, widget):
+    # Create a SYNC wrapper for the on_confirm handler
+    def handle_text_send_sync(self, widget):
         """
-        Fires when the user presses 'Enter' in the chat_input.
+        This is the SYNCHRONOUS function Toga calls when "Enter" is pressed.
+        """
+        # asyncio.create_task schedules the async function to run
+        # without blocking the UI.
+        asyncio.create_task(self.handle_text_send_async(widget))
+
+    async def handle_text_send_async(self, widget):
+        """
+        This is the ASYNC function that contains our actual chat logic.
         """
         user_text = self.chat_input.value
         if user_text == "":
             return # Do nothing if the input is empty
 
-        # 1. Add user's message to the UI
-        # FIX 2: Use a Box for the bubble to allow wrapping and alignment
-        user_bubble_text = toga.Label(
-            user_text,
-            # FIX 4: padding -> margin
-            style=Pack(margin=10, color="white")
-        )
-        user_bubble_box = toga.Box(
-            children=[user_bubble_text],
-            style=Pack(
-                align_items=END, # Aligns the whole box to the right
-                margin=5, 
-                background_color="#007AFF"
-            )
-        )
-        self.chat_log_display.add(user_bubble_box)
-
-        # 2. Add user's message to the "memory"
-        self.conversation_history.append({"role": "user", "content": user_text})
+        # Add user's message to UI and memory
+        await self.add_message_to_chat(user_text, 'user')
         
-        # 3. Clear the input box
+        # Clear the input box
         self.chat_input.value = ""
         
-        # 4. Show a "typing" indicator
+        # Show a "typing" indicator
         typing_indicator = toga.Label(
             "Rod is typing...",
             style=Pack(text_align=LEFT, margin=5, font_style='italic', color='gray')
         )
         self.chat_log_display.add(typing_indicator)
-        
-        # Scroll to the bottom
-        self.chat_scroll.vertical_position = self.chat_scroll.max_vertical_position
+        await self.scroll_to_bottom()
 
-        # 5. Call the "brain" (This is the async part)
+        # Call the "brain" and get a response
         ai_response = await get_rod_response(self.conversation_history)
         
-        # 6. Add AI's response to the "memory"
-        self.conversation_history.append({"role": "assistant", "content": ai_response})
-
-        # 7. Remove the "typing" indicator
+        # Remove the "typing" indicator
         self.chat_log_display.remove(typing_indicator)
 
-        # 8. Add AI's message to the UI
-        # FIX 2: Use a Box for the bubble to allow wrapping and alignment
-        ai_bubble_text = toga.Label(
-            ai_response,
-            # FIX 4: padding -> margin
-            style=Pack(margin=10)
-        )
-        ai_bubble_box = toga.Box(
-            children=[ai_bubble_text],
-            style=Pack(
-                align_items=START, # Aligns the whole box to the left
-                margin=5, 
-                background_color="#E5E5EA"
+        # Add AI's message to UI and memory
+        await self.add_message_to_chat(ai_response, 'assistant')
+        
+    async def start_voice_input(self, widget):
+        print("Mic button clicked!")
+        
+        # Open a file dialog to select an audio file
+        try:
+            filepath_str = await self.main_window.open_file_dialog(
+                title="Select an Audio File",
+                multiple_select=False 
+            )
+            if not filepath_str:
+                 print("No file selected.")
+                 return # User cancelled the dialog
+
+            filepath = Path(filepath_str)
+        except Exception as e:
+            print(f"File dialog error: {e}")
+            return # User cancelled
+
+        # Show a "transcribing" indicator
+        self.chat_input.value = "Transcribing audio..."
+        
+        # Call the STT "brain"
+        transcribed_text = await speech_to_text(filepath)
+        
+        if "Error" in transcribed_text:
+            self.chat_input.value = transcribed_text
+            return
+        
+        # Put the transcribed text in the input box for the user to see
+        self.chat_input.value = transcribed_text
+        
+        # Automatically send this text
+        # We can call the same function that "Enter" uses
+        await self.handle_text_send_async(self.chat_input)
+
+    async def add_message_to_chat(self, text, role):
+        """Helper function to add a message to the UI and memory."""
+        # Add to UI
+        if role == 'user':
+            bubble_style = Pack(align_items=END, margin=5, background_color="#007AFF")
+            text_style = Pack(margin=10, color="white")
+        else: # 'assistant'
+            bubble_style = Pack(align_items=START, margin=5, background_color="#E5E5EA")
+            text_style = Pack(margin=10)
+        
+        self.chat_log_display.add(
+            toga.Box(
+                children=[toga.Label(text, style=text_style)],
+                style=bubble_style
             )
         )
-        self.chat_log_display.add(ai_bubble_box)
+        await self.scroll_to_bottom()
         
-        # Scroll to the bottom
-        self.chat_scroll.vertical_position = self.chat_scroll.max_vertical_position
-        
-
-    def start_voice_input(self, widget):
-        print("Mic button clicked! Voice input is not implemented yet.")
-        # We'll wire this up later
+        # Add to "memory" (both local state and file)
+        self.conversation_history.append({"role": role, "content": text})
+        await append_memory(role, text)
 
 
 def main():

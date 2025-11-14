@@ -1,6 +1,7 @@
 import os
-from openai import AsyncOpenAI
 from dotenv import load_dotenv
+from openai import AsyncOpenAI
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,7 +33,7 @@ async def get_rod_response(conversation_history):
     messages = [{"role": "system", "content": ROD_INSTRUCTIONS}] + conversation_history
     try:
         response = await client.chat.completions.create(
-            model="gpt-5-mini",
+            model="gpt-5-nano",
             messages=messages
         )
         return response.choices[0].message.content
