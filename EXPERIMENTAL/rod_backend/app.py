@@ -40,7 +40,7 @@ async def core_function(file: UploadFile = File(...)):
 
         history = await load_memory()
         ai_reply = await get_rod_response(history)
-        append_memory("assistant", ai_reply)
+        await append_memory("assistant", ai_reply)
 
         audio_path = await text_to_speech(ai_reply)
         print("👉 TTS returned:", audio_path)

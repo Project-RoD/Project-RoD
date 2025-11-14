@@ -38,9 +38,11 @@ async def speech_to_text(filepath: Path) -> str:
     """
     Asynchronously converts an audio file to text using Whisper.
     """
+    """
     EXTS = (".m4a", ".mp3", ".wav", ".aac", ".ogg") # Common audio formats
     if not filepath.suffix.lower() in EXTS:
         return "Unsupported audio format."
+    """
 
     print(f"Transcribing {filepath}...")
     
