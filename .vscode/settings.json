@@ -1,6 +1,6 @@
 {
   "python.analysis.extraPaths": [
-    "EXPERIMENTAL/rod_backend"
+    "rod_backend"
   ],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true
