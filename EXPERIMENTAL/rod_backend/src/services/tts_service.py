@@ -6,8 +6,10 @@ import asyncio
 from pathlib import Path
 
 load_dotenv()
-API_KEY = os.getenv("ELEVEN_LABS_API_KEY")
+API_KEY = os.getenv("ELEVENLABS_API_KEY")
 client = AsyncElevenLabs(api_key=API_KEY)
+
+print("EL KEY LOADED?", API_KEY)
 
 # Resource Folder
 # Create a dedicated folder for audio files inside resources
@@ -30,7 +32,7 @@ async def text_to_speech(chat_text: str, filename="output.mp3"):
     try:
         audio_stream = client.text_to_speech.convert(
             voice_id="s2xtA7B2CTXPPlJzch1v",
-            model_id="eleven_multilingual_v2",
+            model_id="eleven_flash_v2_5",
             text=chat_text,
             output_format="mp3_44100_128"
         )
