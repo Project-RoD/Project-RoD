@@ -57,7 +57,7 @@ async def get_rod_response(conversation_history):
     messages = [{"role": "system", "content": ROD_INSTRUCTIONS}] + conversation_history
     try:
         response = await client.chat.completions.create(
-            model="gpt-5-nano",
+            model="gpt-5-mini",
             messages=messages
         )
         return response.choices[0].message.content
