@@ -5,21 +5,23 @@ from datetime import datetime
 from typing import List, Optional, Dict
 
 # Define the database file location
-DB_FILE = Path.cwd() / "rod.db"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DB_FILE = BASE_DIR / "rod.db"
 
 def get_connection():
     """ Establishes a connection to the SQLite database. """
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(str(DB_FILE))
     # Make the rows behave like dicts
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
     """ Initializes the databse tables. """
+    print(f"Initializing Database at: {DB_FILE}")
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Creates users table
+    # Creates Users Table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -27,7 +29,19 @@ def init_db():
     )
     """)
 
-    # Creates conversations table
+    # Creates Conversations Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        context_lock TEXT,
+        title TEXT, 
+        created_at TEXT,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+    """)
+
+    # Creates Messages Table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,6 +93,19 @@ def start_new_conversation(user_id: str, context_data: Optional[dict] = None) ->
     conn.close()
     return conversation_id or 0
 
+def get_latest_conversation_id(user_id: str) -> Optional[int]:
+    """Finds the most recent chat thread for a user."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Get the most recent conversation created by this user
+    row = cursor.execute("""
+        SELECT id FROM conversations
+        WHERE user_id = ?
+        ORDER BY id DESC LIMIT 1
+    """, (user_id,)).fetchone()
+    conn.close()
+    return row['id'] if row else None
+
 def get_conversation_context(conversation_id: int) -> Optional[dict]:
     """Retrieves the media context (if any) for a specific thread."""
     conn = get_connection()
@@ -89,6 +116,40 @@ def get_conversation_context(conversation_id: int) -> Optional[dict]:
     if row and row['context_lock']:
         return json.loads(row['context_lock'])
     return None
+
+def get_user_conversations(user_id: str) -> List[Dict]:
+    """
+    Returns a summary list of all conversations for the burger menu.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    query = """
+        SELECT c.id, c.created_at, 
+               COALESCE(c.title, (SELECT content FROM messages m WHERE m.conversation_id = c.id AND m.role = 'user' LIMIT 1)) as display_title
+        FROM conversations c
+        WHERE c.user_id = ?
+        ORDER BY c.created_at DESC
+    """
+    
+    rows = cursor.execute(query, (user_id,)).fetchall()
+    conn.close()
+    
+    return [
+        {
+            "id": row["id"], 
+            "date": row["created_at"], 
+            "title": row["display_title"] or "New Conversation"
+        } 
+        for row in rows
+    ]
+
+def update_conversation_title(conversation_id: int, new_title: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE conversations SET title = ? WHERE id = ?", (new_title, conversation_id))
+    conn.commit()
+    conn.close()
 
 # MESSAGE FUNCTIONS
 def add_message(conversation_id: int, role: str, content: str):
@@ -111,48 +172,6 @@ def get_chat_history(conversation_id: int) -> List[Dict]:
         ORDER BY id ASC
     """, (conversation_id,)).fetchall()
     conn.close()
-    
+
     # Convert to a list of simple dictionaries for the AI
-    return [{"role": row["role"], "content": row["content"]} for row in rows]
-
-def get_latest_conversation_id(user_id: str) -> Optional[int]:
-    """Finds the most recent chat thread for a user."""
-    conn = get_connection()
-    cursor = conn.cursor()
-    # Get the most recent conversation created by this user
-    row = cursor.execute("""
-        SELECT id FROM conversations
-        WHERE user_id = ?
-        ORDER BY id DESC LIMIT 1
-    """, (user_id,)).fetchone()
-    conn.close()
-    return row['id'] if row else None
-
-def get_user_conversations(user_id: str) -> List[Dict]:
-    """
-    Returns a summary list of all conversations for the burger menu.
-    """
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    # We join with messages to get a snippet of the first message (the "Title")
-    # This query gets the conversation ID, the date, and the first user message as the 'title'
-    query = """
-        SELECT c.id, c.created_at, 
-               (SELECT content FROM messages m WHERE m.conversation_id = c.id AND m.role = 'user' LIMIT 1) as title
-        FROM conversations c
-        WHERE c.user_id = ?
-        ORDER BY c.created_at DESC
-    """
-    
-    rows = cursor.execute(query, (user_id,)).fetchall()
-    conn.close()
-    
-    return [
-        {
-            "id": row["id"], 
-            "date": row["created_at"], 
-            "title": row["title"] or "New Conversation"
-        } 
-        for row in rows
-    ]
+    return [{"role": row["role"], "content": row["content"]} for row in rows] 

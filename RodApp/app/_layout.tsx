@@ -1,7 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { Image, TouchableOpacity, StyleSheet } from 'react-native';
 
-// ProfileIcon here as it's used by the profile page
 function ProfileIcon() {
   const router = useRouter();
   return (
@@ -29,6 +28,14 @@ export default function RootLayout() {
           title: 'Profile',
           presentation: 'modal',
           headerRight: () => <ProfileIcon />,
+        }}
+      />
+      <Stack.Screen
+        name="history"
+        options={{
+          title: 'History',
+          presentation: 'modal',
+          headerShown: false,
         }}
       />
       <Stack.Screen

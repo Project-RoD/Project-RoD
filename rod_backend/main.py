@@ -19,11 +19,15 @@ app = FastAPI()
 class UserMessage(BaseModel):
     user_id: str
     message: str
-    # If this is set, we are locking context (User clicked "Discuss" in Media Hub)
+    conversation_id: Optional[int] = None
     context_data: Optional[dict] = None
+    force_new: bool = False
 
 class SynthesisRequest(BaseModel):
     text: str
+
+class TitleUpdate(BaseModel):
+    title: str
 
 # LIFECYCLE
 @app.on_event("startup")
@@ -56,34 +60,37 @@ async def handle_chat(request: UserMessage):
     # 1. Ensure User Exists
     db.create_user_if_not_exists(user_id)
 
-    # 2. Handle Conversation Thread
-    # Check if we need to start a fresh context (Media Hub Button)
-    if request.context_data:
-        print(f"Starting NEW conversation with Context: {request.context_data}")
+    # 2. Determine Conversation ID
+    if request.force_new or request.context_data:
+        # Case A: Explicitly starting a NEW conversation
+        print("Starting NEW conversation (Forced or Context)")
         conversation_id = db.start_new_conversation(user_id, request.context_data)
+    
+    elif request.conversation_id:
+        # Case B: Continuing a SPECIFIC conversation (History Menu)
+        conversation_id = request.conversation_id
+        print(f"Resuming conversation ID: {conversation_id}")
+        
     else:
-        # Resume existing or start new if none exists
+        # Case C: Default / Startup (Resume latest)
         conversation_id = db.get_latest_conversation_id(user_id)
         if not conversation_id:
-            print("No active conversation found. Starting new.")
             conversation_id = db.start_new_conversation(user_id)
 
-    # 3. Save User Message
+    # Save & Generate
     db.add_message(conversation_id, "user", text_input)
-
-    # 4. Fetch History & Generate Response
-    # We retrieve the conversation history from SQL to send to GPT
+    
     history_dicts = db.get_chat_history(conversation_id)
-    
-    # (Optional: Inject Media Context into System Prompt here if needed later)
-    
     response_text = await get_rod_response(history_dicts) or "Beklager, jeg forsto ikke det."
-
-    # 5. Save AI Response
+    
     db.add_message(conversation_id, "assistant", response_text)
 
-    # Return the single response (Frontend appends it to UI)
-    return {"role": "assistant", "content": response_text}
+    # Returns the ID so frontend can lock onto it
+    return {
+        "role": "assistant", 
+        "content": response_text, 
+        "conversation_id": conversation_id 
+    }
 
 
 @app.post("/transcribe")
@@ -121,6 +128,17 @@ async def handle_synthesis(request: SynthesisRequest, req: Request):
     else:
         raise HTTPException(status_code=500, detail="Failed to generate audio")
     
+@app.get("/chat/{conversation_id}")
+async def get_conversation_messages(conversation_id: int):
+    """Loads the actual messages for a specific thread."""
+    history = db.get_chat_history(conversation_id)
+    return {"messages": history}
+
+@app.patch("/conversations/{conversation_id}")
+async def update_title(conversation_id: int, update: TitleUpdate):
+    """Renames a conversation."""
+    db.update_conversation_title(conversation_id, update.title)
+    return {"status": "success"}
 
 @app.get("/history/{user_id}")
 async def get_history(user_id: str):

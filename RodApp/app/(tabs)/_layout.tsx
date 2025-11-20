@@ -18,9 +18,10 @@ function StreakCounter() {
 }
 
 function MenuButton() {
+  const router = useRouter();
   return (
     <View style={styles.headerLeftContainer}>
-      <TouchableOpacity onPress={() => console.log('Menu pressed!')}>
+      <TouchableOpacity onPress={() => router.push('/history')}>
         <Image
           source={require('../../assets/icons/menu_icon.png')}
           style={[styles.headerIcon, { tintColor: 'black' }]}
