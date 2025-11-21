@@ -53,6 +53,19 @@ def init_db():
     )
     """)
 
+    # Creates Feedback Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_id INTEGER,
+        user_text TEXT,
+        correction TEXT,
+        explanation TEXT,
+        created_at TEXT,
+        FOREIGN KEY(message_id) REFERENCES messages(id)
+    )
+    """)
+
     conn.commit()
     conn.close()
     print("Database initialized")
@@ -159,8 +172,11 @@ def add_message(conversation_id: int, role: str, content: str):
         INSERT INTO messages (conversation_id, role, content, created_at)
         VALUES (?, ?, ?, ?)
     """, (conversation_id, role, content, datetime.now().isoformat()))
+    # Capture the ID of the message we just inserted
+    msg_id = cursor.lastrowid 
     conn.commit()
     conn.close()
+    return msg_id or 0
 
 def get_chat_history(conversation_id: int) -> List[Dict]:
     """Fetches all messages for a specific thread."""
@@ -175,3 +191,30 @@ def get_chat_history(conversation_id: int) -> List[Dict]:
 
     # Convert to a list of simple dictionaries for the AI
     return [{"role": row["role"], "content": row["content"]} for row in rows] 
+
+
+# FEEDBACK FUNCTIONS
+def add_feedback(message_id: int, user_text: str, correction: str, explanation: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO feedback (message_id, user_text, correction, explanation, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    """, (message_id, user_text, correction, explanation, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+
+def get_feedback_for_conversation(conversation_id: int) -> List[Dict]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Join feedback with messages to filter by conversation_id
+    query = """
+        SELECT f.user_text, f.correction, f.explanation 
+        FROM feedback f
+        JOIN messages m ON f.message_id = m.id
+        WHERE m.conversation_id = ?
+        ORDER BY f.created_at DESC
+    """
+    rows = cursor.execute(query, (conversation_id,)).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
