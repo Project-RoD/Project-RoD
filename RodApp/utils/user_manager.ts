@@ -2,38 +2,38 @@ import * as SecureStore from 'expo-secure-store';
 import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 
-const USER_ID_KEY = 'rod_user_id_v1';
+const USER_ID_KEY = 'rod_user_id_v1';;
 
 // Helper to get ID
-export async function getOrCreateUserId(): Promise<string> {
+export async function getOrCreateUserId(): Promise<{ id: string, isNew: boolean }> {
   try {
-    // 1. Web Support (SecureStore doesn't work on Web, so we use localStorage)
+    // 1. Web Support 
     if (Platform.OS === 'web') {
       let webId = localStorage.getItem(USER_ID_KEY);
       if (!webId) {
         webId = Crypto.randomUUID();
         localStorage.setItem(USER_ID_KEY, webId);
+        return { id: webId, isNew: true }; 
       }
-      return webId;
+      return { id: webId, isNew: false };
     }
 
-    // 2. Native Support (iOS/Android)
+    // 2. Native Support
     let userId = await SecureStore.getItemAsync(USER_ID_KEY);
 
     if (!userId) {
-      // No ID found? Create one and save it forever.
       userId = Crypto.randomUUID();
       await SecureStore.setItemAsync(USER_ID_KEY, userId);
       console.log('🆕 Generated New Identity:', userId);
-    } else {
-      console.log('👤 Recognized Returning User:', userId);
-    }
+      return { id: userId, isNew: true }; 
+    } 
+    
+    console.log('👤 Recognized Returning User:', userId);
+    return { id: userId, isNew: false };
 
-    return userId;
   } catch (error) {
-    console.error('Error retrieving User ID:', error);
-    // Emergency fallback to prevent crash
-    return 'guest-fallback-' + Math.random().toString(36).substring(7);
+    
+    return { id: 'fallback', isNew: false };
   }
 }
 

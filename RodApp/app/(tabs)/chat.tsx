@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TextInput, FlatList, KeyboardAvoidingView,
   Platform, ActivityIndicator, TouchableOpacity, Alert, Image, Modal, ScrollView
@@ -6,8 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import { StatusBar } from 'expo-status-bar';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-
+import { useLocalSearchParams, useNavigation, useRouter, useFocusEffect } from 'expo-router';
+import { DeviceEventEmitter } from 'react-native';
 import { ENDPOINTS } from '../../constants/config';
 import { getOrCreateUserId } from '../../utils/user_manager';
 
@@ -37,24 +37,21 @@ export default function ChatScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
 
-  // Feedback State
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
 
-  // 1. HEADER INJECTION 
+  // 1. HEADER INJECTION
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <View style={styles.headerRightContainer}>
-          {/* Feedback Button */}
           <TouchableOpacity onPress={openFeedback} style={styles.headerButton}>
              <Image 
                 source={require('../../assets/icons/lightbulb_icon.png')} 
-                style={styles.headerIconOriginal}
+                style={styles.headerIconOriginal} 
              />
           </TouchableOpacity>
-
           <TouchableOpacity onPress={() => router.push('/profile')}>
              <Image 
                 source={require('../../assets/icons/profile_icon.png')} 
@@ -67,24 +64,33 @@ export default function ChatScreen() {
   }, [navigation, activeConversationId]);
 
   // 2. INIT & LOAD
-  useEffect(() => {
-    const init = async () => {
-      const id = await getOrCreateUserId();
-      setUserId(id);
+  useFocusEffect(
+    useCallback(() => {
+      const init = async () => {
+        const userData = await getOrCreateUserId();
+        const idString = typeof userData === 'object' ? userData.id : userData;
+        setUserId(idString);
 
-      if (params.conversationId) {
-        if (params.conversationId === 'new') {
-          setMessages([]);
-          setActiveConversationId(null);
-        } else {
-          const convId = parseInt(params.conversationId as string, 10);
-          setActiveConversationId(convId);
-          loadConversationHistory(convId);
+        if (params.conversationId) {
+          if (params.conversationId === 'new') {
+            setMessages([]);
+            setFeedbackList([]);
+            setActiveConversationId(null);
+          } else {
+            const convId = parseInt(params.conversationId as string, 10);
+            
+            if (activeConversationId !== convId) {
+                setMessages([]); 
+                setFeedbackList([]);
+                setActiveConversationId(convId);
+                loadConversationHistory(convId);
+            }
+          }
         }
-      }
-    };
-    init();
-  }, [params.conversationId]);
+      };
+      init();
+    }, [params.conversationId])
+  );
 
   const loadConversationHistory = async (id: number) => {
     setIsLoading(true);
@@ -99,7 +105,7 @@ export default function ChatScreen() {
     }
   };
 
-  // 3. FEEDBACK LOGIC
+  // 3. FEEDBACK
   const openFeedback = async () => {
     setFeedbackVisible(true);
     if (!activeConversationId) return;
@@ -117,7 +123,7 @@ export default function ChatScreen() {
     }
   };
 
-  // 4. AUDIO & CHAT LOGIC
+  // 4. AUDIO & SEND
   useEffect(() => { return sound ? () => { sound.unloadAsync(); } : undefined; }, [sound]);
 
   async function playResponseAudio(text: string) {
@@ -198,6 +204,10 @@ export default function ChatScreen() {
       });
 
       if (!response.ok) throw new Error('Backend Error');
+
+      // Send Signal to Header
+      DeviceEventEmitter.emit('streakUpdate');
+
       const data = await response.json();
 
       if (data.conversation_id) setActiveConversationId(data.conversation_id);
@@ -261,7 +271,6 @@ export default function ChatScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* FEEDBACK MODAL */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -271,7 +280,7 @@ export default function ChatScreen() {
         <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Grammar Feedback</Text>
+                    <Text style={styles.modalTitle}>Conversation Feedback!</Text>
                     <TouchableOpacity onPress={() => setFeedbackVisible(false)}>
                         <Text style={styles.closeText}>Close</Text>
                     </TouchableOpacity>
@@ -306,13 +315,13 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: 'white' },
   container: { flex: 1 },
 
-  // HEADER STYLES
+  // HEADER
   headerRightContainer: { flexDirection: 'row', alignItems: 'center', marginRight: 15 },
   headerButton: { marginRight: 15 },
-  headerIconOriginal: { width: 28, height: 28 }, // No tintColor
+  headerIconOriginal: { width: 28, height: 28 }, 
   profileIcon: { width: 30, height: 30, tintColor: 'black' },
 
-  // CHAT STYLES
+  // CHAT
   chatLog: { flex: 1 },
   chatLogContent: { padding: 10, paddingBottom: 20 },
   bubble: { padding: 12, borderRadius: 18, marginBottom: 10, maxWidth: '80%' },
@@ -320,15 +329,19 @@ const styles = StyleSheet.create({
   aiBubble: { backgroundColor: '#F2F2F7', alignSelf: 'flex-start', borderBottomLeftRadius: 2 },
   userText: { color: 'white', fontSize: 16 },
   aiText: { color: 'black', fontSize: 16 },
-  typingIndicator: { padding: 10, paddingLeft: 20, flexDirection: 'row', alignItems: 'center' },
-  typingText: { color: '#888', fontStyle: 'italic', marginRight: 5 },
+  
+  // INDICATOR
+  typingIndicator: { padding: 10, paddingLeft: 20, flexDirection: 'row', alignItems: 'center', width: '100%' },
+  typingText: { color: '#333', fontSize: 14, marginRight: 8, fontWeight: '500' },
+  
+  // INPUT
   inputContainer: { flexDirection: 'row', padding: 10, borderTopWidth: 1, borderColor: '#E5E5EA', backgroundColor: 'white', alignItems: 'center' },
   textInput: { flex: 1, height: 40, backgroundColor: '#F2F2F7', borderRadius: 20, paddingHorizontal: 15 },
   iconButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', marginLeft: 5 },
   icon: { width: 24, height: 24, tintColor: '#007AFF' },
   iconRecording: { tintColor: 'red' },
 
-  // MODAL STYLES
+  // MODAL
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' },
   modalContent: { height: '60%', backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
@@ -336,7 +349,7 @@ const styles = StyleSheet.create({
   closeText: { color: '#007AFF', fontSize: 16, fontWeight: 'bold' },
   emptyText: { textAlign: 'center', color: '#888', marginTop: 30, fontSize: 16 },
   
-  // FEEDBACK STYLES
+  // CARDS
   feedbackCard: { backgroundColor: '#F9F9F9', padding: 15, borderRadius: 10, marginBottom: 15, borderWidth: 1, borderColor: '#EEE' },
   fbOriginal: { fontSize: 16, color: '#FF3B30', textDecorationLine: 'line-through', marginBottom: 5 },
   fbCorrection: { fontSize: 16, color: '#34C759', fontWeight: 'bold', marginBottom: 5 },
