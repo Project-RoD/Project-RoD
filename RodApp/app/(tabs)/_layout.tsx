@@ -1,11 +1,45 @@
 import React from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { Image, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-
+import { DeviceEventEmitter } from 'react-native';
+import { ENDPOINTS } from '../../constants/config';
+import { getOrCreateUserId } from '../../utils/user_manager';
+import { useState, useEffect } from 'react';
 
 // Helper Components for the Header
 function StreakCounter() {
-  const streak = 0; // Placeholder
+  const [streak, setStreak] = useState(0);
+
+  const fetchStreak = async () => {
+    try {
+      const userData = await getOrCreateUserId();
+      // Handle object vs string safely
+      const id = typeof userData === 'object' ? userData.id : userData;
+      
+      const res = await fetch(`${ENDPOINTS.USER_STREAK}/${id}`);
+      const data = await res.json();
+      setStreak(data.streak || 0);
+    } catch (e) {
+      console.log("Streak fetch failed", e);
+    }
+  };
+
+  useEffect(() => {
+    // 1. Fetch immediately on load
+    fetchStreak();
+
+    // 2. Listen for the "Radio Signal" from Chat Screen
+    const subscription = DeviceEventEmitter.addListener('streakUpdate', () => {
+      console.log("Event received: Updating streak...");
+      fetchStreak();
+    });
+
+    // 3. Cleanup: Turn off the radio when this component dies
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   return (
     <View style={styles.headerLeftContainer}>
       <Image
@@ -70,7 +104,6 @@ export default function TabLayout() {
           height: 90,
           paddingTop: 5,
           paddingBottom: 30,
-          paddingLeft: 4,
         },
         tabBarLabelStyle: {
           fontSize: 12,

@@ -1,5 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
 function ProfileIcon() {
   const router = useRouter();
@@ -15,37 +16,47 @@ function ProfileIcon() {
 
 export default function RootLayout() {
   return (
-    <Stack>
-      <Stack.Screen 
-        name="(tabs)" // This targets all tab screens
-        options={{
-          headerShown: false, 
-        }} 
-      />
-      <Stack.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          presentation: 'modal',
-          headerRight: () => <ProfileIcon />,
-        }}
-      />
-      <Stack.Screen
-        name="history"
-        options={{
-          title: 'History',
-          presentation: 'modal',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="media" 
-        options={{
-          title: 'Media Hub',
-          presentation: 'modal',
-        }}
-      />
-    </Stack>
+    <>
+      <StatusBar style="dark" />
+      <Stack>
+        <Stack.Screen 
+          name="(tabs)" 
+          options={{ headerShown: false }} 
+        />
+        <Stack.Screen
+          name="level_select"
+          options={{
+            title: 'Select Level',
+            presentation: 'modal',
+            headerShown: false,
+            gestureEnabled: false 
+          }}
+        />
+        <Stack.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            presentation: 'modal',
+            headerRight: () => <ProfileIcon />,
+          }}
+        />
+        <Stack.Screen
+          name="history"
+          options={{
+            title: 'History',
+            presentation: 'modal',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="media" 
+          options={{
+            title: 'Media Hub',
+            presentation: 'modal',
+          }}
+        />
+      </Stack>
+    </>
   );
 }
 
