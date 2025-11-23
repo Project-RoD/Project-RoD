@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, FlatList, KeyboardAvoidingView,
-  Platform, ActivityIndicator, TouchableOpacity, Alert, Image,
+  Platform, ActivityIndicator, Alert, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
@@ -11,6 +11,8 @@ import { useLocalSearchParams } from 'expo-router';
 // Imports
 import { ENDPOINTS } from '../../constants/config';
 import { getOrCreateUserId } from '../../utils/user_manager';
+import { ChatBubble } from '../../components/chatui/ChatBubble';
+import { SendButton, RecordButton } from "../../components/chatui/ChatButton";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -227,9 +229,9 @@ export default function ChatScreen() {
           style={styles.chatLog}
           contentContainerStyle={styles.chatLogContent}
           renderItem={({ item }) => (
-            <View style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.aiBubble]}>
-              <Text style={item.role === 'user' ? styles.userText : styles.aiText}>{item.content}</Text>
-            </View>
+            <ChatBubble role={item.role}>
+              {item.content}
+            </ChatBubble>
           )}
           keyExtractor={(_, index) => index.toString()}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
@@ -251,8 +253,7 @@ export default function ChatScreen() {
             onSubmitEditing={() => handleSend(inputText, 'text')}
           />
           
-          <TouchableOpacity
-            style={styles.iconButton}
+          <SendButton
             onPress={() => handleSend(inputText, 'text')}
             disabled={isLoading || inputText.length === 0}
           >
@@ -260,10 +261,9 @@ export default function ChatScreen() {
               source={require('../../assets/icons/send_icon.png')} 
               style={[styles.icon, inputText.length === 0 && styles.iconDisabled]} 
             />
-          </TouchableOpacity>
+          </SendButton>
 
-          <TouchableOpacity
-            style={styles.iconButton}
+          <RecordButton
             onPressIn={startRecording}
             onPressOut={stopRecording}
             disabled={isLoading}
@@ -272,7 +272,7 @@ export default function ChatScreen() {
               source={require('../../assets/icons/mic_icon.png')} 
               style={[styles.icon, recording && styles.iconRecording]} 
             />
-          </TouchableOpacity>
+          </RecordButton>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -284,16 +284,10 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   chatLog: { flex: 1 },
   chatLogContent: { padding: 10, paddingBottom: 20 },
-  bubble: { padding: 12, borderRadius: 18, marginBottom: 10, maxWidth: '80%' },
-  userBubble: { backgroundColor: '#007AFF', alignSelf: 'flex-end', borderBottomRightRadius: 2 },
-  aiBubble: { backgroundColor: '#F2F2F7', alignSelf: 'flex-start', borderBottomLeftRadius: 2 },
-  userText: { color: 'white', fontSize: 16 },
-  aiText: { color: 'black', fontSize: 16 },
   typingIndicator: { flexDirection: 'row', alignItems: 'center', padding: 10, paddingLeft: 20 },
   typingText: { color: '#8E8E93', fontStyle: 'italic', marginRight: 8 },
   inputContainer: { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 8, borderTopWidth: 1, borderColor: '#CCC', backgroundColor: 'white', alignItems: 'center' },
   textInput: { flex: 1, height: 40, borderColor: '#DDD', borderWidth: 1, borderRadius: 20, paddingHorizontal: 15 },
-  iconButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', marginLeft: 5 },
   icon: { width: 24, height: 24, tintColor: '#007AFF' },
   iconDisabled: { tintColor: '#CCC' },
   iconRecording: { tintColor: 'red' }
