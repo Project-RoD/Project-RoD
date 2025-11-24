@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, Request, HTTPException
+from fastapi import FastAPI, UploadFile, File, Request, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Dict, Optional
@@ -8,14 +8,19 @@ import aiofiles
 import uuid
 
 # Import your brains
+import src.services.db_service as db
 from src.services.textgen_service import get_rod_response
 from src.services.stt_service import speech_to_text
 from src.services.tts_service import text_to_speech
-import src.services.db_service as db
+from src.services.grammar_check_service import analyze_grammar
 
 app = FastAPI()
 
 # Pydantic Models (Defines JSON data shape)
+class LevelUpdate(BaseModel):
+    user_id: str
+    level: str # 'A1', 'A2', 'B1'
+
 class UserMessage(BaseModel):
     user_id: str
     message: str
@@ -29,12 +34,14 @@ class SynthesisRequest(BaseModel):
 class TitleUpdate(BaseModel):
     title: str
 
+
 # LIFECYCLE
 @app.on_event("startup")
 async def startup_event():
     """Initialize the Database when server starts."""
     print("Checking database...")
     db.init_db()
+
 
 # STATIC FILES
 AUDIO_DIR = Path.cwd() / "src" / "assets" / "audio"
@@ -44,8 +51,39 @@ app.mount("/audio", StaticFiles(directory=AUDIO_DIR), name="audio")
 
 
 # ENDPOINTS
+@app.get("/user/streak/{user_id}")
+async def get_streak(user_id: str):
+    streak = db.get_user_streak(user_id)
+    return {"streak": streak}
+
+@app.post("/user/level")
+async def update_level(data: LevelUpdate):
+    """Updates the user's proficiency level."""
+    print(f"Setting user {data.user_id} to level {data.level}")
+    db.set_user_level(data.user_id, data.level)
+    return {"status": "success", "level": data.level}
+
+@app.get("/feedback/{conversation_id}")
+async def get_conversation_feedback(conversation_id: int):
+    """Returns a list of grammar corrections for a specific chat."""
+    return {"feedback": db.get_feedback_for_conversation(conversation_id)}
+
+async def run_grammar_check(msg_id: int, history: List[Dict], user_text: str, ai_response: str, level: str):
+    """
+    Background Task: Checks grammar without blocking the chat.
+    """
+    print(f"🕵️ Checking grammar for: {user_text}")
+    result = await analyze_grammar(history, user_text, ai_response, level)
+    
+    if result and result.get("has_error"):
+        print(f"🚩 Feedback Generated ({level})")
+        # Save to DB so the user can see it later in the feedback menu
+        db.add_feedback(msg_id, user_text, result["correction"], result["explanation"])
+    else:
+        print("✅ Message looks good.")
+
 @app.post("/chat")
-async def handle_chat(request: UserMessage):
+async def handle_chat(request: UserMessage, background_tasks: BackgroundTasks):
     """
     The Main Brain. 
     1. Ensures user exists.
@@ -59,33 +97,47 @@ async def handle_chat(request: UserMessage):
 
     # 1. Ensure User Exists
     db.create_user_if_not_exists(user_id)
+    db.update_user_streak(user_id)
 
     # 2. Determine Conversation ID
     if request.force_new or request.context_data:
-        # Case A: Explicitly starting a NEW conversation
-        print("Starting NEW conversation (Forced or Context)")
+        print("Starting NEW conversation")
         conversation_id = db.start_new_conversation(user_id, request.context_data)
-    
     elif request.conversation_id:
-        # Case B: Continuing a SPECIFIC conversation (History Menu)
         conversation_id = request.conversation_id
         print(f"Resuming conversation ID: {conversation_id}")
-        
     else:
-        # Case C: Default / Startup (Resume latest)
         conversation_id = db.get_latest_conversation_id(user_id)
         if not conversation_id:
             conversation_id = db.start_new_conversation(user_id)
 
-    # Save & Generate
-    db.add_message(conversation_id, "user", text_input)
-    
+    # 3. Save User Message & Trigger Grammar Check
+    msg_id = db.add_message(conversation_id, "user", text_input)
+
+    # 4. Fetch History & Generate Response
     history_dicts = db.get_chat_history(conversation_id)
-    response_text = await get_rod_response(history_dicts) or "Beklager, jeg forsto ikke det."
-    
+
+    # 5. Generate Response
+    user_level = db.get_user_level(user_id)
+    print(f"Generating response for level: {user_level}")
+    response_text = await get_rod_response(history_dicts, level=user_level) or "Beklager, jeg forsto ikke det."
+
+    # 6. Save AI Response
     db.add_message(conversation_id, "assistant", response_text)
 
-    # Returns the ID so frontend can lock onto it
+    # 7. Trigger Background Check
+    # We pass 'history_dicts[:-1]' to remove the current message from the "History" context block
+    context_history = history_dicts[:-1] 
+    
+    background_tasks.add_task(
+        run_grammar_check, 
+        msg_id, 
+        context_history, 
+        text_input,     
+        response_text,
+        user_level 
+    )
+
     return {
         "role": "assistant", 
         "content": response_text, 

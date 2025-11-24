@@ -24,21 +24,27 @@ export default function HistoryScreen() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editText, setEditText] = useState('');
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
   const loadHistory = async () => {
-    const id = await getOrCreateUserId();
-    setUserId(id);
     try {
-      const response = await fetch(`${ENDPOINTS.HISTORY}/${id}`);
+      const userData = await getOrCreateUserId();
+      
+      // Handle both Object and String cases safely
+      const idString = typeof userData === 'object' ? userData.id : userData;
+      setUserId(idString);
+
+      const response = await fetch(`${ENDPOINTS.HISTORY}/${idString}`);
       const data = await response.json();
-      setHistory(data.conversations);
+      
+      setHistory(data.conversations || []);
     } catch (e) {
       console.error("Failed to load history", e);
     }
   };
+
+  // Initial Load
+  useEffect(() => {
+    loadHistory();
+  }, []);
 
   const handleSelect = (id: number) => {
     router.dismiss(); 
@@ -85,9 +91,7 @@ export default function HistoryScreen() {
           </View>
       </TouchableOpacity>
       
-      {/* Edit Icon Button */}
       <TouchableOpacity style={styles.editBtn} onPress={() => openEditModal(item)}>
-         {/* Make sure this image path is correct! Usually ../../assets if in app/ */}
          <Image 
             source={require('../assets/icons/edit_icon.png')} 
             style={styles.editIcon} 
@@ -116,7 +120,6 @@ export default function HistoryScreen() {
         contentContainerStyle={{ padding: 20 }}
       />
 
-      {/* THE EDIT POPUP WINDOW */}
       <Modal
         animationType="fade"
         transparent={true}
