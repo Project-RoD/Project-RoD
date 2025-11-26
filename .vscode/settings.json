@@ -1,7 +1,0 @@
-{
-  "python.analysis.extraPaths": [
-    "rod_backend"
-  ],
-  "python.testing.unittestEnabled": false,
-  "python.testing.pytestEnabled": true
-}

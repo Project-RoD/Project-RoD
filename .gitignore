@@ -1,0 +1,89 @@
+# --- GLOBAL ---
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# PYTHON / BACKEND
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+venv/
+env/
+.venv/
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.dist-info/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & Debugging
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# Logs
+rod_backend/logs/
+*.log
+
+# Environment variables
+.env
+
+# Database
+rod_backend/rod.db
+*.sqlite3
+
+# Audio Temp Files
+rod_backend/testing/speech-to-text/audio_files/
+rod_backend/testing/speech-to-text/transcript/
+rod_backend/temp_*.wav
+rod_backend/temp_*.mp3
+
+# JAVASCRIPT / FRONTEND
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# React Native / Metro
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# TypeScript
+*.tsbuildinfo
+
+# NATIVE BUILDS
+android/
+ios/
+
+# Keys & Signing
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+*.keystore
