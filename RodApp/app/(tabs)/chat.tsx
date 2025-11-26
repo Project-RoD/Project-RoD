@@ -8,6 +8,7 @@ import { Audio } from 'expo-av';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useNavigation, useRouter, useFocusEffect } from 'expo-router';
 import { DeviceEventEmitter } from 'react-native';
+
 import { ENDPOINTS } from '../../constants/config';
 import { getOrCreateUserId } from '../../utils/user_manager';
 
@@ -32,6 +33,8 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
+  
+  const [hasAutoSent, setHasAutoSent] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
@@ -76,9 +79,9 @@ export default function ChatScreen() {
             setMessages([]);
             setFeedbackList([]);
             setActiveConversationId(null);
+            setHasAutoSent(false); // Reset trigger for new chats
           } else {
             const convId = parseInt(params.conversationId as string, 10);
-            
             if (activeConversationId !== convId) {
                 setMessages([]); 
                 setFeedbackList([]);
@@ -91,6 +94,15 @@ export default function ChatScreen() {
       init();
     }, [params.conversationId])
   );
+
+  // 3. AUTO-SEND TRIGGER
+  useEffect(() => {
+    if (userId && params.mediaContext && params.conversationId === 'new' && !hasAutoSent) {
+      console.log("🚀 Auto-sending media kickstart...");
+      handleSend("Hva handler denne artikkelen om?", 'text');
+      setHasAutoSent(true);
+    }
+  }, [userId, params.mediaContext, params.conversationId, hasAutoSent]);
 
   const loadConversationHistory = async (id: number) => {
     setIsLoading(true);
@@ -105,7 +117,7 @@ export default function ChatScreen() {
     }
   };
 
-  // 3. FEEDBACK
+  // 4. FEEDBACK
   const openFeedback = async () => {
     setFeedbackVisible(true);
     if (!activeConversationId) return;
@@ -123,7 +135,7 @@ export default function ChatScreen() {
     }
   };
 
-  // 4. AUDIO & SEND
+  // 5. AUDIO & SEND
   useEffect(() => { return sound ? () => { sound.unloadAsync(); } : undefined; }, [sound]);
 
   async function playResponseAudio(text: string) {
@@ -190,11 +202,15 @@ export default function ChatScreen() {
 
     try {
       const isNewChat = (params.conversationId === 'new' && activeConversationId === null);
+      
       const payload = {
         user_id: userId,
         message: textToSend,
         conversation_id: activeConversationId,
-        force_new: isNewChat 
+        force_new: isNewChat,
+        context_data: (isNewChat && params.mediaContext) 
+            ? JSON.parse(params.mediaContext as string) 
+            : null 
       };
 
       const response = await fetch(ENDPOINTS.CHAT, {
@@ -205,7 +221,6 @@ export default function ChatScreen() {
 
       if (!response.ok) throw new Error('Backend Error');
 
-      // Send Signal to Header
       DeviceEventEmitter.emit('streakUpdate');
 
       const data = await response.json();
@@ -280,7 +295,7 @@ export default function ChatScreen() {
         <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Conversation Feedback!</Text>
+                    <Text style={styles.modalTitle}>Feedback</Text>
                     <TouchableOpacity onPress={() => setFeedbackVisible(false)}>
                         <Text style={styles.closeText}>Close</Text>
                     </TouchableOpacity>
@@ -291,7 +306,7 @@ export default function ChatScreen() {
                 ) : (
                     <ScrollView contentContainerStyle={{paddingBottom: 20}}>
                         {feedbackList.length === 0 ? (
-                            <Text style={styles.emptyText}>No grammar errors found yet! 🎉</Text>
+                            <Text style={styles.emptyText}>No feedback available yet.</Text>
                         ) : (
                             feedbackList.map((item, index) => (
                                 <View key={index} style={styles.feedbackCard}>
@@ -314,14 +329,10 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: 'white' },
   container: { flex: 1 },
-
-  // HEADER
   headerRightContainer: { flexDirection: 'row', alignItems: 'center', marginRight: 15 },
   headerButton: { marginRight: 15 },
   headerIconOriginal: { width: 28, height: 28 }, 
   profileIcon: { width: 30, height: 30, tintColor: 'black' },
-
-  // CHAT
   chatLog: { flex: 1 },
   chatLogContent: { padding: 10, paddingBottom: 20 },
   bubble: { padding: 12, borderRadius: 18, marginBottom: 10, maxWidth: '80%' },
@@ -329,27 +340,19 @@ const styles = StyleSheet.create({
   aiBubble: { backgroundColor: '#F2F2F7', alignSelf: 'flex-start', borderBottomLeftRadius: 2 },
   userText: { color: 'white', fontSize: 16 },
   aiText: { color: 'black', fontSize: 16 },
-  
-  // INDICATOR
   typingIndicator: { padding: 10, paddingLeft: 20, flexDirection: 'row', alignItems: 'center', width: '100%' },
   typingText: { color: '#333', fontSize: 14, marginRight: 8, fontWeight: '500' },
-  
-  // INPUT
   inputContainer: { flexDirection: 'row', padding: 10, borderTopWidth: 1, borderColor: '#E5E5EA', backgroundColor: 'white', alignItems: 'center' },
   textInput: { flex: 1, height: 40, backgroundColor: '#F2F2F7', borderRadius: 20, paddingHorizontal: 15 },
   iconButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', marginLeft: 5 },
   icon: { width: 24, height: 24, tintColor: '#007AFF' },
   iconRecording: { tintColor: 'red' },
-
-  // MODAL
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' },
   modalContent: { height: '60%', backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontWeight: 'bold' },
   closeText: { color: '#007AFF', fontSize: 16, fontWeight: 'bold' },
   emptyText: { textAlign: 'center', color: '#888', marginTop: 30, fontSize: 16 },
-  
-  // CARDS
   feedbackCard: { backgroundColor: '#F9F9F9', padding: 15, borderRadius: 10, marginBottom: 15, borderWidth: 1, borderColor: '#EEE' },
   fbOriginal: { fontSize: 16, color: '#FF3B30', textDecorationLine: 'line-through', marginBottom: 5 },
   fbCorrection: { fontSize: 16, color: '#34C759', fontWeight: 'bold', marginBottom: 5 },
