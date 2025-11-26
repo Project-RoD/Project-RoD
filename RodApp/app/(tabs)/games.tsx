@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  View, Text, StyleSheet, TouchableOpacity, Alert 
+  View, Text, StyleSheet, TouchableOpacity, Alert, DeviceEventEmitter 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+
+// Imports for Logic & Data
 import { getRandomWord, isWordValid } from '../../constants/word_list';
+import { ENDPOINTS } from '../../constants/config';
+import { getOrCreateUserId } from '../../utils/user_manager';
 
 const MAX_GUESSES = 6;
 const WORD_LENGTH = 5;
@@ -20,10 +24,31 @@ export default function GameScreen() {
   }, []);
 
   const startNewGame = () => {
-    setSolution(getRandomWord());
+    const newWord = getRandomWord();
+    console.log("Answer:", newWord);
+    setSolution(newWord);
     setGuesses([]);
     setCurrentGuess("");
     setGameStatus('playing');
+  };
+
+  // STREAK UPDATE LOGIC
+  const handleWin = async () => {
+    try {
+      const userData = await getOrCreateUserId();
+      const userId = typeof userData === 'object' ? userData.id : userData;
+
+      await fetch(ENDPOINTS.USER_ACTIVITY, { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId, level: 'game' }) 
+      });
+
+      DeviceEventEmitter.emit('streakUpdate');
+      console.log("🔥 Streak updated via Game Win!");
+    } catch (e) {
+      console.error("Failed to update streak", e);
+    }
   };
 
   const handleKeyPress = (key: string) => {
@@ -41,8 +66,15 @@ export default function GameScreen() {
   };
 
   const submitGuess = () => {
+    // 1. Check Length
     if (currentGuess.length !== WORD_LENGTH) {
       Alert.alert("For kort", "Ordet må ha 5 bokstaver!");
+      return;
+    }
+
+    // 2. Check Dictionary
+    if (!isWordValid(currentGuess)) {
+      Alert.alert("Ukjent ord", "Dette ordet finnes ikke i ordlisten vår.");
       return;
     }
 
@@ -50,8 +82,10 @@ export default function GameScreen() {
     setGuesses(newGuesses);
     setCurrentGuess("");
 
+    // 3. Check Win/Loss
     if (currentGuess === solution) {
       setGameStatus('won');
+      handleWin(); // Trigger Streak Update here
       Alert.alert("Gratulerer!", `Du klarte det! Ordet var ${solution}`, [
         { text: "Spill igjen", onPress: startNewGame }
       ]);
@@ -65,9 +99,9 @@ export default function GameScreen() {
 
   // RENDER HELPERS
   const getCellColor = (guess: string, index: number, char: string) => {
-    if (char === solution[index]) return '#538D4E'; // Green
-    if (solution.includes(char)) return '#B59F3B'; // Yellow
-    return '#3A3A3C'; // Gray
+    if (char === solution[index]) return '#538D4E';
+    if (solution.includes(char)) return '#B59F3B';
+    return '#3A3A3C';
   };
 
   const renderGrid = () => {
@@ -101,6 +135,7 @@ export default function GameScreen() {
     return rows;
   };
 
+  // Custom Key Component
   const KeyboardKey = ({ label, width = 30 }: { label: string, width?: number }) => (
     <TouchableOpacity 
         style={[styles.key, { width }]} 
@@ -129,7 +164,7 @@ export default function GameScreen() {
             {['A','S','D','F','G','H','J','K','L','Ø','Æ'].map(k => <KeyboardKey key={k} label={k} />)}
         </View>
         <View style={styles.keyboardRow}>
-            <KeyboardKey label="ENTER" width={48} /> 
+            <KeyboardKey label="ENTER" width={48} />
             {['Z','X','C','V','B','N','M'].map(k => <KeyboardKey key={k} label={k} />)}
             <KeyboardKey label="⌫" width={40} />
         </View>
@@ -140,10 +175,10 @@ export default function GameScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'white', alignItems: 'center' },
-  header: { marginTop: 0, marginBottom: 30 },
+  header: { marginTop: 0, marginBottom: 15 },
   title: { fontSize: 32, fontWeight: 'bold', letterSpacing: 5, color: '#333' },
   
-  gridContainer: { marginBottom: 30 },
+  gridContainer: { marginBottom: 40 },
   row: { flexDirection: 'row', marginBottom: 8, gap: 6 },
   cell: { 
     width: 50, height: 50, 
@@ -154,7 +189,7 @@ const styles = StyleSheet.create({
   cellText: { fontSize: 24, fontWeight: 'bold', color: 'black' },
 
   keyboardContainer: { alignItems: 'center', gap: 8 },
-  keyboardRow: { flexDirection: 'row', gap: 3 },
+  keyboardRow: { flexDirection: 'row', gap: 3 }, // Tight gap for Norwegian keys
   key: { 
     height: 50, backgroundColor: '#D3D6DA', 
     justifyContent: 'center', alignItems: 'center', 

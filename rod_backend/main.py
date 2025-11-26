@@ -7,7 +7,7 @@ from pathlib import Path
 import aiofiles
 import uuid
 
-# Import your brains
+# Import our modules
 import src.services.db_service as db
 from src.services.textgen_service import get_rod_response
 from src.services.stt_service import speech_to_text
@@ -46,12 +46,18 @@ async def startup_event():
 
 # STATIC FILES
 AUDIO_DIR = Path.cwd() / "src" / "assets" / "audio"
-# Create if it doesn't exist, to avoid crash
+# Create if it doesn't exist
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/audio", StaticFiles(directory=AUDIO_DIR), name="audio")
 
 
 # ENDPOINTS
+@app.post("/user/activity")
+async def record_activity(data: LevelUpdate):
+    """Generic endpoint to update streak from games/media."""
+    db.update_user_streak(data.user_id)
+    return {"status": "updated"}
+
 @app.get("/user/streak/{user_id}")
 async def get_streak(user_id: str):
     streak = db.get_user_streak(user_id)
