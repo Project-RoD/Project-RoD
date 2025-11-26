@@ -55,7 +55,7 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>App Info</Text>
-        <Text style={styles.infoText}>Rod Alpha v0.9</Text>
+        <Text style={styles.infoText}>Rod Beta v0.7</Text>
         <Text style={styles.infoText}>User ID: {Math.random().toString(36).slice(-6)}...</Text>
       </View>
     </SafeAreaView>
