@@ -13,6 +13,7 @@ from src.services.textgen_service import get_rod_response
 from src.services.stt_service import speech_to_text
 from src.services.tts_service import text_to_speech
 from src.services.grammar_check_service import analyze_grammar
+from src.services.media_service import get_cached_news, refresh_news_background
 
 app = FastAPI()
 
@@ -117,6 +118,27 @@ async def handle_chat(request: UserMessage, background_tasks: BackgroundTasks):
     # 4. Fetch History & Generate Response
     history_dicts = db.get_chat_history(conversation_id)
 
+    active_context = db.get_conversation_context(conversation_id)
+
+    if active_context:
+        print(f"📖 Found Active Context: {active_context.get('title')}")
+        # Create a "System Note" that Rod sees, but isn't saved to the user's chat log
+        context_injection = {
+            "role": "system",
+            "content": f"""
+            VIKTIG KONTEKST:
+            Brukeren har nettopp lest artikkelen: "{active_context.get('title')}".
+            Sammendrag: "{active_context.get('summary')}".
+            
+            DINE INSTRUKSER FOR DENNE SAMTALEN:
+            1. **FOKUS:** Hele denne samtalen skal handle om denne artikkelen.
+            2. **SVAR PÅ SPØRSMÅL:** 
+            3. **LED SAMTALEN:** Etter at du har svart, still et spørsmål tilbake om hva brukeren mener om saken.
+            """
+        }
+        # Injects it at the BEGINNING of the history sent to AI
+        history_dicts.insert(0, context_injection)
+
     # 5. Generate Response
     user_level = db.get_user_level(user_id)
     print(f"Generating response for level: {user_level}")
@@ -126,7 +148,6 @@ async def handle_chat(request: UserMessage, background_tasks: BackgroundTasks):
     db.add_message(conversation_id, "assistant", response_text)
 
     # 7. Trigger Background Check
-    # We pass 'history_dicts[:-1]' to remove the current message from the "History" context block
     context_history = history_dicts[:-1] 
     
     background_tasks.add_task(
@@ -199,6 +220,17 @@ async def get_history(user_id: str):
     """
     conversations = db.get_user_conversations(user_id)
     return {"conversations": conversations}
+
+@app.get("/media/news")
+async def get_news(background_tasks: BackgroundTasks):
+    """
+    Returns DB content instantly. Triggers refresh for next time.
+    """
+    news = await get_cached_news()
+    
+    background_tasks.add_task(refresh_news_background)
+    
+    return {"articles": news}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

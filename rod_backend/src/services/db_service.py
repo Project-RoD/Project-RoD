@@ -67,6 +67,19 @@ def init_db():
         FOREIGN KEY(message_id) REFERENCES messages(id)
     )
     """)
+
+    # 5. Media Cache
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS media_cache (
+        link TEXT PRIMARY KEY,
+        title TEXT,
+        summary TEXT,
+        image_url TEXT,
+        level TEXT,
+        source TEXT,
+        created_at TEXT
+    )
+    """)
     
     conn.commit()
     conn.close()
@@ -288,3 +301,35 @@ def get_feedback_for_conversation(conversation_id: int) -> List[Dict]:
     rows = cursor.execute(query, (conversation_id,)).fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+
+# MEDIA HUB
+def save_media_item(item: Dict):
+    """Saves a single media item if it doesn't exist."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT OR IGNORE INTO media_cache (link, title, summary, image_url, level, source, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (item['link'], item['title'], item['summary'], item['image_url'], item['level'], item['source'], datetime.now().isoformat()))
+        conn.commit()
+    finally:
+        conn.close()
+
+def get_cached_media(limit=20) -> List[Dict]:
+    """Returns stored articles sorted by newest."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Get most recent
+    rows = cursor.execute("SELECT * FROM media_cache ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def media_exists(link: str) -> bool:
+    """Checks if we already have this article (to save AI costs)."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    row = cursor.execute("SELECT 1 FROM media_cache WHERE link = ?", (link,)).fetchone()
+    conn.close()
+    return row is not None

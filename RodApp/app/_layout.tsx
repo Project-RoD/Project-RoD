@@ -53,6 +53,7 @@ export default function RootLayout() {
           options={{
             title: 'Media Hub',
             presentation: 'modal',
+            headerShown: false,
           }}
         />
       </Stack>

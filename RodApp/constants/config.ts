@@ -10,4 +10,5 @@ export const ENDPOINTS = {
   GET_CHAT: `${API_BASE_URL}/chat`,
   USER_LEVEL: `${API_BASE_URL}/user/level`,
   USER_STREAK: `${API_BASE_URL}/user/streak`,
+  MEDIA_NEWS: `${API_BASE_URL}/media/news`,
 };
