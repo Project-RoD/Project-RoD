@@ -1,4 +1,4 @@
-# RoD (Rettskriving og Dialog AI Project 2025) Beta v0.7
+# RoD (Rettskriving og Dialog AI Project 2025)
 
 This repository contains **RoD**, a Human-Centered AI platform designed to bridge the gap between passive media consumption and active conversation practice for Norwegian learners.
 
@@ -10,13 +10,16 @@ The project features a Client-Server architecture (React Native + Python FastAPI
 
 ### RoD in Action
 
-**1. Adaptive Chat & Feedback (Language Learning Partner)**
+**1. Opening Screen & General Navigation (App's UI)**
+![App Demo](./RodApp/assets/general_demo.gif)
+
+**2. Adaptive Chat & Feedback (Language Learning Partner)**
 ![Chat Demo](./RodApp/assets/chat_demo.gif)
 
-**2. The Media Hub (Media Collection & Context Injection)**
+**3. The Media Hub (Media Collection & Context Injection)**
 ![Media Demo](./RodApp/assets/media_demo.gif)
 
-**3. Gamification (Wordle)**
+**4. Gamification (Wordle)**
 ![Games Demo](./RodApp/assets/games_demo.gif)
 
 ---
