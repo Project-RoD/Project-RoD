@@ -11,16 +11,16 @@ The project features a Client-Server architecture (React Native + Python FastAPI
 ### RoD in Action
 
 **1. Opening Screen & General Navigation (App's UI)**
-![App Demo](./RodApp/assets/general_demo.gif)
+![App Demo](./RodApp/assets/demo/general_demo.gif)
 
 **2. Adaptive Chat & Feedback (Language Learning Partner)**
-![Chat Demo](./RodApp/assets/chat_demo.gif)
+![Chat Demo](./RodApp/assets/demo/chat_demo.gif)
 
 **3. The Media Hub (Media Collection & Context Injection)**
-![Media Demo](./RodApp/assets/media_demo.gif)
+![Media Demo](./RodApp/assets/demo/media_demo.gif)
 
 **4. Gamification (Wordle)**
-![Games Demo](./RodApp/assets/games_demo.gif)
+![Games Demo](./RodApp/assets/demo/games_demo.gif)
 
 ---
 
