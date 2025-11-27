@@ -55,6 +55,7 @@ rod_backend/testing/speech-to-text/audio_files/
 rod_backend/testing/speech-to-text/transcript/
 rod_backend/temp_*.wav
 rod_backend/temp_*.mp3
+rod_backend/src/assets/audio/*.mp3
 
 # JAVASCRIPT / FRONTEND
 # Dependencies
