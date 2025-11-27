@@ -9,7 +9,8 @@ The project features a Client-Server architecture (React Native + Python FastAPI
 ---
 
 <div align="center">
-### RoD in Action
+
+<h3>RoD in Action</h3>
 
 | **1. Opening Screen & Navigation** | **2. Adaptive Chat & Feedback** |
 |:---:|:---:|
