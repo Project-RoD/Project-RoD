@@ -11,6 +11,7 @@ The project features a Client-Server architecture (React Native + Python FastAPI
 <div align="center">
 
 <h3>RoD in Action</h3>
+Disclaimer: Some of the Gifs take a while to load
 
 | **1. Opening Screen & Navigation** | **2. Adaptive Chat & Feedback** |
 |:---:|:---:|
@@ -101,16 +102,6 @@ You need **Two Terminals** to run this project (one for Backend, one for Fronten
 
 ---
 
-## 👥 Contributors
-
-This project was developed as a final exam delivery for **KIUA1008 (Human-Centred Design Principles for AI Systems)** at INN University.
-
-* **Pedro**
-* **Fredrik**
-* **Engebret**
-
-
-*November 2025*
 
 
 
