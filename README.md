@@ -14,9 +14,9 @@ The project features a Client-Server architecture (React Native + Python FastAPI
 
 | **1. Opening Screen & Navigation** | **2. Adaptive Chat & Feedback** |
 |:---:|:---:|
-| <video src="https://i.imgur.com/VIXb7Xy.mp4" width="250" autoplay loop muted playsinline style="display:block;"></video> | <video src="https://i.imgur.com/wJ4GnvS.mp4" width="250" autoplay loop muted playsinline style="display:block;"></video>  |
+| <img src="https://ibb.co/Cy3gvL3" width="250"> | <img src="https://ibb.co/1fqMSbxx" width="250">  |
 | **3. The Media Hub** | **4. Gamification (Wordle)** |
-| <video src="https://i.imgur.com/baSKgcN.mp4" width="250" autoplay loop muted playsinline style="display:block;"></video>  | <img src="https://i.imgur.com/r4zXQxT.gif" width="250">  |
+| <video src="https://i.imgur.com/baSKgcN.mp4" width="250" autoplay loop muted playsinline style="display:block;"></video>  | <img src="https://ibb.co/1JYm6CpD" width="250">  |
 
 </div>
 
@@ -111,3 +111,4 @@ This project was developed as a final exam delivery for **KIUA1008 (Human-Centre
 
 
 *November 2025*
+
